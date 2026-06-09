@@ -1,0 +1,57 @@
+# Core parameters to instantiate PrecipVerificationProcessor class
+start_dt_str: "20140614.01" 
+end_dt_str: "20140621.00"
+temporal_res: 1
+truth_data_name: "AORC"
+data_names: ["AORC", "CONUS404", "NestedReplay"] 
+data_grid: "AORC"
+grid_cell_size: 0.033332 
+input_format: "nc" # 'zarr' or 'netcdf' (or 'nc')
+USE_EXTERNAL_DA_DICT: False
+LAT_LON_2D: False
+
+# Names of regions for which to perform verification followed by their configuration info (lat/lon extents, etc.)
+# If nothing is provided for region info, info from precip_plotting_utilities.regions_info_dict will be used.
+regions_info:
+  "US-BigSioux":
+    region_extent: [-100, -87, 39, 49]
+    figsize_sp: !!python/tuple [13, 12]
+    figsize: !!python/tuple [14, 11.5]
+    figsize_errors: !!python/tuple [12, 11.5]
+    subplot_layout: "grid"
+    cm_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
+    ts_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+    central_point: [-999.0, -999.0]
+    crosses_meridian: False
+
+# Statistics configuration 
+stats_config:
+  eval_radius_list_grid_cells: [1, 2, 3, 4, 6, 8, 12, 20, 40, 80]
+  eval_threshold_list_ari: [1, 2, 5, 10, 25, 50, 100, 200, 500, 1000] # Years
+  eval_threshold_list_mm: [1.0, 2.0, 5.0, 10.0, 20.0, 25.0, 30.0, 40.0, 50.0, 60.0, 70.0, 75.0, 80.0, 90.0, 100.0]
+  eval_threshold_list_pctl: [5.0, 10.0, 25.0, 50.0, 75.0, 90.0, 95.0, 99.0, 99.9]
+  fixed_eval_radius_grid_cells: 12
+  fixed_eval_threshold_ari: 2 # Years
+  fixed_eval_threshold_mm: 10
+  fixed_eval_threshold_pctl: 95
+  fss_pctl_over_eval_period: False # Calculate FSS using percentile thresholds valid over entire evaluation period
+  time_period_types: ["full_period"] # Time periods over which to calculate stats
+  timeseries_ann: False # Set to true to annotate mean timeseries plots with correlations, other stats
+
+# Which statistics to calculate and plot
+do_stats:
+  cmaps: # Contour maps of basic statistics: 'all', 'mean', 'pctls'
+  fss: False # Calculate FSS using amount thresholds
+  fss_ari: False # Calculate FSS using ARI grid thresholds
+  fss_pctl: False # Calculate FSS using percentile thresholds
+  fss_timeseries: False # Timeseries of FSS at selected threshold over entire evaluation time period
+  occ_stats: False # Occurrence statistics (CSI, etc.)
+  pdfs: False # Probability Density Functions
+  scatter_plot: False # Scatter plot of data summed over entire evaluation time period
+  mean_timeseries: False # Timeseries of mean precipitation of <temporal_res> data 
+
+# Increase font size of plot labels for poster
+poster: False
+
+# Whether to write calculate statistics to netCDF
+write_to_nc: False 
