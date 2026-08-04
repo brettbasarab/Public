@@ -51,6 +51,29 @@ def calculate_24hr_accum_precip(input_data, output_temporal_res, native_temporal
 
     return precip24
 
+def sum_data_over_full_time_period(da, time_units, temporal_res):
+    # Keep time dimension in summmed data array so we are able to operate on this
+    # dimension in various plotting method and related helper methods.
+    # Also set min_count to the shape of the DataArray's time dimension, which requires
+    # that ALL data along this dimension be non-NaN to take the sum; otherwise, NaN is returned
+    da_summed_time = da.sum(dim = time_units, 
+                            keepdims = True,
+                            skipna = True,
+                            min_count = da.coords[time_units].shape[0])
+    end_dt = pd.Timestamp(da[time_units].values[-1])
+    da_summed_time.coords[time_units] = [end_dt]
+
+    # Set attributes properly
+    num_time_intervals = da[time_units].shape[0]
+    total_time_period_hours = num_time_intervals * temporal_res
+    add_attributes_to_data_array(da_summed_time,
+                                 short_name = f"{total_time_period_hours}-hour precipitation", 
+                                 long_name = f"Precipitation accumulated over the prior {total_time_period_hours} hour(s)",
+                                 units = da.units,
+                                 interval_hours = total_time_period_hours) 
+
+    return da_summed_time
+
 def check_model_valid_dt_format(dt_str, resolution = 3, check_resolution = True):
     if (resolution < 24):
         dt_fmt = "%Y%m%d.%H"

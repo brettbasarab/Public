@@ -4,6 +4,7 @@ import dataclasses
 import precip_data_processors
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import metpy.plots
 import numpy as np
 import os
 import pandas as pd
@@ -1176,14 +1177,37 @@ def set_figsize_based_on_num_da(num_da, region_plotting_config):
     else:
         return region_plotting_config.figsize
 
-def add_cartopy_features_to_map_proj(axis, region, data_proj, draw_labels = False):
-        axis.coastlines()
+def add_cartopy_features_to_map_proj(axis,
+                                     region,
+                                     data_proj,
+                                     draw_counties = False,
+                                     draw_gridlines = True,
+                                     draw_gridline_labels = False):
+        # Set region exent
         axis.set_extent(regions_info_dict[region].region_extent, crs = data_proj)
+
+        # Draw coastlines
+        axis.coastlines()
+
+        # Draw country borders
         axis.add_feature(cfeature.BORDERS)
+
+        # Draw US state borders and counties
         if ("US" in region):
             axis.add_feature(cfeature.STATES)
-        gl = axis.gridlines(crs = data_proj, color = "gray", alpha = 0.5, draw_labels = draw_labels,
-                            linewidth = 0.5, linestyle = "dashed")
+            if draw_counties:
+                axis.add_feature(metpy.plots.USCOUNTIES.with_scale("500k"),
+                                 edgecolor = "black",
+                                 linewidth = 0.5)
+
+        # Draw lat/lon grid lines
+        if draw_gridlines:
+            gl = axis.gridlines(crs = data_proj,
+                                color = "gray",
+                                alpha = 0.5,
+                                draw_labels = draw_gridline_labels,
+                                linewidth = 0.5,
+                                linestyle = "dashed")
 
 @dataclasses.dataclass
 class xyCoords:
@@ -1220,15 +1244,20 @@ def how_to_plot_cmap_single_panel():
           '                       short_name = "precip_data",\n'
           '                       proj_name = "PlateCarree",\n'
           '                       cmap = DEFAULT_PRECIP_CMAP,\n'
+          '                       draw_counties = False,\n'
+          '                       draw_gridlines = True,\n'
           '                       extend = "max")')
 
 # For each time in the data array, create a single-paneled contour plot of precipitation
 def plot_cmap_single_panel(data_array,
-                           data_name, region,
+                           data_name,
+                           region,
                            plot_levels = np.arange(0, 85, 5),
                            short_name = "precip_data",
                            proj_name = "PlateCarree",
                            cmap = DEFAULT_PRECIP_CMAP,
+                           draw_counties = False, 
+                           draw_gridlines = True, 
                            extend = "max"):
     match proj_name:
         case "LambertConformal":
@@ -1269,7 +1298,10 @@ def plot_cmap_single_panel(data_array,
         # Set up the figure
         plt.figure(figsize = regions_info_dict[region].figsize_sp)
         axis = plt.axes(projection = map_proj)
-        add_cartopy_features_to_map_proj(axis, region, data_proj, draw_labels = False)
+        add_cartopy_features_to_map_proj(axis, region, data_proj,
+                                         draw_counties = draw_counties,
+                                         draw_gridlines = draw_gridlines, 
+                                         draw_gridline_labels = False)
 
         # Plot the data
         if (extend != "min") and (extend != "max") and (extend != "both"):
@@ -1325,6 +1357,8 @@ def how_to_plot_cmap_multi_panel():
           '                      short_name = "precip_data",\n' 
           '                      sparse_cbar_ticks = False,\n'
           '                      cmap = DEFAULT_PRECIP_CMAP,\n'
+          '                      draw_counties = False,\n'
+          '                      draw_gridlines = True,\n'
           '                      extend = "max")')
 
 # Contour maps with the correct number of panels, with the "truth" dataset always in the top left
@@ -1336,6 +1370,8 @@ def plot_cmap_multi_panel(data_dict,
                           short_name = "precip_data",
                           sparse_cbar_ticks = False,
                           cmap = DEFAULT_PRECIP_CMAP,
+                          draw_counties = False, 
+                          draw_gridlines = True, 
                           extend = "max"):
     # Configure basic info about the data
     truth_da = data_dict[truth_data_name]
@@ -1375,7 +1411,10 @@ def plot_cmap_multi_panel(data_dict,
   
         # Loop through each of the subplot axes defined above (one axis for each DataArray) and plot the data 
         for axis, (data_name, da) in zip(axes_list, data_dict.items()):
-            add_cartopy_features_to_map_proj(axis, region, proj)
+            add_cartopy_features_to_map_proj(axis, region, proj,
+                                             draw_counties = draw_counties,
+                                             draw_gridlines = draw_gridlines, 
+                                             draw_gridline_labels = False)
 
             if has_time_dim:
                 data_to_plot = da.loc[loc_str]
