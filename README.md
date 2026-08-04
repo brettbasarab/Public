@@ -58,3 +58,4 @@ verif.plot_aggregated_fss(da_dict = sum_dict, eval_type = "by_threshold")
 ```
 
 ### Plot FSS timeseries of hourly precipitation
+Here, it's easier to run the verificatino again, but in the `do_stats` section of the yaml file, set `fss: True`. This will calculate FSS at varying threshold and radii. It will take a bit of time.
