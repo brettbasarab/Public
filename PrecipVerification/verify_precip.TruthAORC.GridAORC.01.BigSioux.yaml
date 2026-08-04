@@ -1,4 +1,7 @@
 # Core parameters to instantiate PrecipVerificationProcessor class
+input_dir:
+output_dir:
+user_dir:
 start_dt_str: "20140614.01" 
 end_dt_str: "20140621.00"
 temporal_res: 1

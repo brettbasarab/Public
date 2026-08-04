@@ -29,6 +29,22 @@ def main():
     with open(args.yaml_fpath, "r") as f:
         yaml_data = yaml.load(f, Loader = yaml.FullLoader)
 
+    # Input/output directories:
+    try:
+        input_dir = yaml_data["input_dir"]
+    except KeyError:
+        input_dir = None
+    
+    try:
+        output_dir = yaml_data["output_dir"]
+    except KeyError:
+        output_dir = None
+
+    try:
+        user_dir = yaml_data["user_dir"]
+    except KeyError:
+        user_dir = "bbasarab"
+
     # Core configuration
     grid_cell_size = yaml_data["grid_cell_size"]
 
@@ -84,7 +100,10 @@ def main():
                                                                           region = region,
                                                                           region_info = yaml_data["regions_info"][region],
                                                                           temporal_res = yaml_data["temporal_res"],
-                                                                          poster = yaml_data["poster"]) 
+                                                                          poster = yaml_data["poster"],
+                                                                          input_dir = input_dir,
+                                                                          output_dir = output_dir,
+                                                                          user_dir = user_dir) 
 
         # Calculate data for and plot contour maps of specified statistics valid at each grid point (so
         # contour maps can be made of the resulting data) and across various aggregation time periods.

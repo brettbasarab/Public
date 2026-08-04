@@ -92,7 +92,9 @@ def how_to_inst_pvp_class():
         '    temporal_res = 3,\n'
         '    thresholds = [0.25, 1.0, 10.0], #, 25.0, 50.0], # Thresholds in mm\n'
         '    percentiles = [95, 99], # Percentiles to calculate\n'
-        '    user_dir = "bbasarab",\n'
+        '    input_dir = None, # Top-level location of input data (nc or zarr) to use in verification)\n' 
+        '    output_dir = None, # Top-level location for output data (stats and plots)\n'
+        '    user_dir = None,\n' 
         '    poster = False)') 
 
 class PrecipVerificationProcessor(object):
@@ -113,8 +115,10 @@ class PrecipVerificationProcessor(object):
                  region_info = None,
                  temporal_res = 3,
                  thresholds = [0.25, 1.0, 10.0], #, 25.0, 50.0], # Thresholds in mm
-                 percentiles = [95, 99], # Percentiles to calculate 
-                 user_dir = "bbasarab",
+                 percentiles = [95, 99], # Percentiles to calculate
+                 input_dir = None, # Top-level location of input data (nc or zarr) to use in verification) 
+                 output_dir = None, # Top-level location for output data (stats and plots)
+                 user_dir = None, 
                  poster = False): 
 
         self.LOAD_DATA = LOAD_DATA
@@ -142,17 +146,43 @@ class PrecipVerificationProcessor(object):
         self.variable_plot_limits = ppu.variable_plot_limits("accum_precip", temporal_res = self.temporal_res)
         self.variable_pctl_plot_limits = ppu.variable_pctl_plot_limits("accum_precip", temporal_res = self.temporal_res)
 
-        self.user_dir = user_dir
-        self.home_dir = os.path.join("/home", self.user_dir)
-        self.data_dir = os.path.join("/data", self.user_dir)
-        self.netcdf_dir = os.path.join(self.data_dir, "netcdf") 
-        self.zarr_dir = os.path.join(self.data_dir, "zarr") 
-        self.plot_output_dir = os.path.join(self.home_dir, "plots") 
-        self.stats_output_dir = os.path.join(self.home_dir, "stats")
+        # Construct input directory
+        if (user_dir is None):
+            self.user_dir = "bbasarab"
+        else: 
+            self.user_dir = user_dir
+        print(f"User directory: {self.user_dir}")
 
-        # Set format of input datasets (netcdf, zarr, etc.)
-        self._set_input_format(input_format)
+        if (input_dir is None):
+            self.input_dir = os.path.join("/data", self.user_dir)
+            self._set_input_format(input_format, name_input_dir_by_input_format = True)
+        else:
+            self.input_dir = input_dir 
+            self._set_input_format(input_format, name_input_dir_by_input_format = False)
+        print(f"Input data directory: {self.input_dir}")
         
+        # Construct output directories
+        if (output_dir is None):
+            self.output_dir = os.path.join("/home", self.user_dir)
+        else:
+            self.output_dir = output_dir
+
+        self.plot_output_dir = os.path.join(self.output_dir, "plots")
+        if not(os.path.exists(self.plot_output_dir)):
+            ret = os.makedirs(self.plot_output_dir)
+            if (ret != 0):
+                print(f"Error: Could not create plot output directory {self.plot_output_dir}")
+                sys.exit(1) 
+        print(f"Plots output directory: {self.plot_output_dir}")
+
+        self.stats_output_dir = os.path.join(self.output_dir, "stats")
+        if not(os.path.exists(self.stats_output_dir)):
+            ret = os.makedirs(self.stats_output_dir)
+            if (ret != 0):
+                print(f"Error: Could not create plot output directory {self.stats_output_dir}")
+                sys.exit(1) 
+        print(f"Stats output directory: {self.stats_output_dir}")
+
         # Set pertinent region info (region lat/lon extents; whether region spans meridian, etc.)
         self._set_region_info(region, region_info)
 
@@ -470,13 +500,15 @@ class PrecipVerificationProcessor(object):
             self.data_names[0] = self.truth_data_name 
 
     # Set format of input datasets (netcdf, zarr, etc.)
-    def _set_input_format(self, input_format):
+    def _set_input_format(self, input_format, name_input_dir_by_input_format = True):
         if (input_format == "netcdf") or (input_format == "nc"):
-            self.input_dir = self.netcdf_dir
             self.input_format = "netcdf"
+            if name_input_dir_by_input_format:
+                self.input_dir = os.path.join(self.input_dir, "netcdf") 
         elif (input_format == "zarr"):
-            self.input_dir = self.zarr_dir
             self.input_format = "zarr"
+            if name_input_dir_by_input_format:
+                self.input_dir = os.path.join(self.input_dir, "zarr") 
         else:
             print(f"Error: Unsupported input format {self.input_format}")
             sys.exit(1) 
@@ -1760,7 +1792,7 @@ class PrecipVerificationProcessor(object):
             return np.nan 
     
     def _open_ari_threshold_grid(self, ari, duration):
-        ari_nc_dir = os.path.join(self.netcdf_dir, f"ARIs.{self.data_grid_name}")
+        ari_nc_dir = os.path.join(self.input_dir, f"ARIs.{self.data_grid_name}")
         data_name = f"ARI.{self.data_grid_name}.{ari:04d}_year.{duration:03d}_hour_precipitation"
         ari_fname = f"{data_name}.nc"
         ari_fpath = os.path.join(ari_nc_dir, ari_fname)
@@ -1789,7 +1821,7 @@ class PrecipVerificationProcessor(object):
             main_prefix = f"{data_name}.{self.data_grid_name}.{self.temporal_res:02d}_hour_precipitation"
             dir_name = f"{main_prefix}.stats"
 
-        nc_dir = os.path.join(self.netcdf_dir, dir_name)
+        nc_dir = os.path.join(self.input_dir, dir_name)
         if (not os.path.exists(nc_dir)):
             os.mkdir(nc_dir)
 
@@ -2859,7 +2891,7 @@ class PrecipVerificationProcessor(object):
                 ann_pos_horz += ann_pos_step
 
                 if write_stats:
-                    stats_dir = os.path.join(self.home_dir, "stats")
+                    stats_dir = os.path.join(self.output_dir, "stats")
                     stats_fname = fig_name.split(".png")[0] + ".txt"
                     stats_fpath = os.path.join(stats_dir, stats_fname)
                     print(f"Writing stats to {stats_fpath}")
