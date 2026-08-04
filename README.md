@@ -1,9 +1,16 @@
 # Precip Verification Processor
 
+## Getting started
+Clone the repo and cd to the precipitation verification directory. You'll run the code directly in this directory.
+```
+git clone https://github.com/brettbasarab/Public.git
+cd PrecipVerification
+```
+
 ## Crucial Points Regarding the Input Files
-* All data files must be on the same grid (this code does not handle interpolation/regridding).
-* Only south->north dimension names 'lat', 'latitude', 'y', or 'south_north' are supported
-* Only west->east dimension names 'lon', 'longitude', 'x', or 'west_east' are supported
+* All data files must already be on the same grid (this code does not handle interpolation/regridding).
+* Only south->north dimensions named 'lat', 'latitude', 'y', or 'south_north' are supported
+* Only west->east dimensions named 'lon', 'longitude', 'x', or 'west_east' are supported
 
 ## Running Basic Verification for Big Sioux River Case Study
 
