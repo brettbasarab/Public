@@ -8,7 +8,7 @@ cd PrecipVerification
 ```
 
 ## Crucial Points Regarding the Input Files
-* All data files must already be on the same grid (this code does not handle interpolation/regridding).
+* All netCDF input data files must already be on the same grid (this code does not handle interpolation/regridding).
 * Only south->north dimensions named 'lat', 'latitude', 'y', or 'south_north' are supported
 * Only west->east dimensions named 'lon', 'longitude', 'x', or 'west_east' are supported
 
