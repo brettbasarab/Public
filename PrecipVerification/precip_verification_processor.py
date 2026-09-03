@@ -212,11 +212,6 @@ class PrecipVerificationProcessor(object):
         
         # Set standard dimension names
         self.time_dim_name = "period_end_time" 
-        #self.lat_dim_name = "lat"
-        #self.lon_dim_name = "lon"
-        #self.lat_dim_name = self.truth_da.dims[1] 
-        #self.lon_dim_name = self.truth_da.dims[2]
-        #self.dims = (self.time_dim_name, self.lat_dim_name, self.lon_dim_name)
         
         # Set contour pplot color maps, plot levels, and color lists
         self.plot_cmap, self.plot_levels, self.color_list = ppu.create_precip_plot_levels(temporal_res = self.temporal_res, version = 2)
@@ -289,18 +284,19 @@ class PrecipVerificationProcessor(object):
            (da.dims[2] != "west_east"):
             print(f"Error: Only west->east dimension names 'lon', 'longitude', 'x', or 'west_east' supported, not {self.truth_da.dims[2]}")
             sys.exit(1)
-        
-        if not(hasattr(self, "lat_dim_name")):
-            self.lat_dim_name = da.dims[1] 
-            self.lon_dim_name = da.dims[2]
-            self.dims = (self.time_dim_name, self.lat_dim_name, self.lon_dim_name)
-        else:
-            if (da.dims[1] != self.lat_dim_name):
-                print(f"Error: DataArray south->north dimension name {da.dims[1]} does not match previously set dimension name {self.lat_dim_name}")
-                sys.exit(1)
-            if (da.dims[2] != self.lon_dim_name):
-                print(f"Error: DataArray west->east dimension name {da.dims[2]} does not match previously set dimension name {self.lon_dim_name}")
-                sys.exit(1)
+       
+        if not(self.USE_EXTERNAL_DA_DICT): 
+            if not(hasattr(self, "lat_dim_name")):
+                self.lat_dim_name = da.dims[1] 
+                self.lon_dim_name = da.dims[2]
+                self.dims = (self.time_dim_name, self.lat_dim_name, self.lon_dim_name)
+            else:
+                if (da.dims[1] != self.lat_dim_name):
+                    print(f"Error: DataArray south->north dimension name {da.dims[1]} does not match previously set dimension name {self.lat_dim_name}")
+                    sys.exit(1)
+                if (da.dims[2] != self.lon_dim_name):
+                    print(f"Error: DataArray west->east dimension name {da.dims[2]} does not match previously set dimension name {self.lon_dim_name}")
+                    sys.exit(1)
 
     def _create_dummy_data_dict_for_non_standard_input(self):
         da_dict = {}
@@ -1932,13 +1928,30 @@ class PrecipVerificationProcessor(object):
     def how_to_plot_aggregated_fss(self):
         print(f'plot_aggregated_fss(da_dict = None,\n'
               f'                    eval_type = [{evaluate_by_radius_kw_str}, {evaluate_by_threshold_kw_str}, {evaluate_by_radius_ari_threshold_kw_str}, {evaluate_by_ari_kw_str}],\n'
-              f'                    xaxis_explicit_values = False, time_period_type = "full_period",\n'
-              f'                    xaxis_var_ticks = None, plot_levels_fss = None, plot_levels_frequency_bias = None,\n'
-              f'                    is_pctl_threshold = False, include_frequency_bias = False, include_fss_uniform = False)')
+              f'                    xaxis_explicit_values = False,\n'
+              f'                    xaxis_var_ticks = None\n'
+              f'                    time_period_type = "full_period",\n'
+              f'                    plot_levels_fss = None,\n'
+              f'                    plot_levels_frequency_bias = None,\n'
+              f'                    is_pctl_threshold = False,\n'
+              f'                    include_frequency_bias = False,\n'
+              f'                    include_fss_uniform = False,\n'
+              f'                    fontsize = 15,\n'
+              f'                    linewidth = 2.5)')
 
-    def plot_aggregated_fss(self, da_dict = None, eval_type = evaluate_by_radius_kw_str, xaxis_explicit_values = False,
-                            time_period_type = "full_period", plot_levels_fss = None, plot_levels_frequency_bias = None,
-                            xaxis_var_ticks = None, is_pctl_threshold = False, include_frequency_bias = False, include_fss_uniform = False):
+    def plot_aggregated_fss(self,
+                            da_dict = None,
+                            eval_type = evaluate_by_radius_kw_str,
+                            xaxis_explicit_values = False,
+                            xaxis_var_ticks = None,
+                            time_period_type = "full_period",
+                            plot_levels_fss = None,
+                            plot_levels_frequency_bias = None,
+                            is_pctl_threshold = False,
+                            include_frequency_bias = False,
+                            include_fss_uniform = False,
+                            fontsize = 15,
+                            linewidth = 2.5):
         if (da_dict is None):
             da_dict = self.da_dict
 
@@ -2086,8 +2099,8 @@ class PrecipVerificationProcessor(object):
 
             # Plot data
             for axis, plot_dict, ylabel, ylims, yticks, subplot_title in zip(axes_list, plot_dicts_list, ylabels_list, ylims_list, yticks_list, subplot_titles_list):
-                axis.set_xlabel(xlabel, size = 15)
-                axis.set_ylabel(ylabel, size = 15)
+                axis.set_xlabel(xlabel, size = fontsize)
+                axis.set_ylabel(ylabel, size = fontsize)
                 axis.set_xlim(xlims)
                 axis.set_ylim(ylims)
                 if xaxis_explicit_values:
@@ -2095,13 +2108,13 @@ class PrecipVerificationProcessor(object):
                 else:
                     axis.set_xticks(xticks)
                 axis.set_yticks(yticks) 
-                axis.tick_params(axis = "both", labelsize = 15)
+                axis.tick_params(axis = "both", labelsize = fontsize)
                 axis.grid(True, linewidth = 1.5)
 
                 for data_name, da in plot_dict.items():
                     if (data_name == self.truth_data_name):
                         continue
-                    axis.plot(xaxis_var, da, linewidth = 2.5, label = data_name,
+                    axis.plot(xaxis_var, da, linewidth = linewidth, label = data_name,
                               color = ppu.datasets_colors_dict[data_name])
                 if (include_fss_uniform) and \
                 (subplot_title == "FSS") and \
@@ -2109,13 +2122,13 @@ class PrecipVerificationProcessor(object):
                     fss_uniform = fss_uniform_agg_dict[dtime][self.data_names[-1]]
                     axis.plot([0, xticks[-1]], [fss_uniform, fss_uniform], linewidth = 3, color = "black", linestyle = "dashed") 
                 if include_frequency_bias:
-                    axis.set_title(subplot_title, fontsize = 15)
+                    axis.set_title(subplot_title, fontsize = fontsize)
                     if (subplot_title == "Frequency Bias"): # If we're working on the frequency bias axis, add a line at bias = 1 (unbiased forecast)
                         axis.plot([0, xaxis_var[-1]], [1, 1], linewidth = 3, color = "black") 
-                axis.legend(loc = "best", prop = {"size": 15})
+                axis.legend(loc = "best", prop = {"size": fontsize})
 
             # Save figure 
-            fig.suptitle(title, size = 15)
+            fig.suptitle(title, size = fontsize)
             fig.tight_layout()
             fig_path = os.path.join(self.plot_output_dir, fig_name)
             print(f"Saving {fig_path}")
