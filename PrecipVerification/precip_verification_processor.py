@@ -2652,8 +2652,8 @@ class PrecipVerificationProcessor(object):
 
                 # Annotate units near right edge of colorbar 
                 axis.annotate(da.units,
-                              xy = (0.81, -0.17), 
-                              xytext = (0.81, -0.17), 
+                              xy = (0.86, -0.12), 
+                              xytext = (0.86, -0.12), 
                               xycoords = "axes fraction",
                               size = 14) 
     
