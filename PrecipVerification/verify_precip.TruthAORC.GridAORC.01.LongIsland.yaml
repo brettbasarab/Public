@@ -53,5 +53,5 @@ do_stats:
 # Increase font size of plot labels for poster
 poster: False
 
-# Whether to write calculate statistics to netCDF
+# Whether to write calculated statistics to netCDF
 write_to_nc: False 
