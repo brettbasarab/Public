@@ -75,7 +75,8 @@ def map_region_to_data_names(region, verif_grid = utils.Replay_data_name, includ
 
 def how_to_inst_pvp_class():
   print('PrecipVerificationProcessor(\n'
-        '    start_dt_str, end_dt_str,\n'
+        '    start_dt_str,\n' 
+        '    end_dt_str,\n'
         '    LOAD_DATA = True, # If True, load data from netCDF, zarr, etc. files specified by input_format (otherwise use existing non-region-subsetted arrays)\n'
         '    loaded_non_subset_da_dict = None, # Dictionary of loaded but non-region-subsetted DataArrays\n'
         '    USE_EXTERNAL_DA_DICT = False, # If True, use data from a DataArray dictionary specified by external_da_dict; if False, load data directly specified by input_format\n'
@@ -98,7 +99,9 @@ def how_to_inst_pvp_class():
         '    poster = False)') 
 
 class PrecipVerificationProcessor(object):
-    def __init__(self, start_dt_str, end_dt_str,
+    def __init__(self,
+                 start_dt_str,
+                 end_dt_str,
                  LOAD_DATA = True, # If True, load data from netCDF, zarr, etc. files specified by input_format (otherwise use existing non-region-subsetted arrays)
                  loaded_non_subset_da_dict = None, # Dictionary of loaded but non-region-subsetted DataArrays
                  USE_EXTERNAL_DA_DICT = False, # If True, use data from an DataArray dictionary specified by external_da_dict; if False, load data directly specified by input_format
@@ -630,9 +633,14 @@ class PrecipVerificationProcessor(object):
         return self.da_dict_summed_time
 
     ##### Public methods stats calculations #####
+    def how_to_calculate_occ_stats(self):
+        print(f'calculate_occ_stats(input_da_dict = None,\n'
+              f'                    threshold_list = {utils.default_eval_threshold_list_mm}')
+
     # Calculate occurrence statistics over entire forecast and obs datasets (i.e., the stats will be derived
     # from grids that are valid in time and space).
-    def calculate_occ_stats(self, input_da_dict = None,
+    def calculate_occ_stats(self,
+                            input_da_dict = None,
                             threshold_list = utils.default_eval_threshold_list_mm): 
         if (input_da_dict is None):
             input_da_dict = self.da_dict
@@ -724,6 +732,9 @@ class PrecipVerificationProcessor(object):
 
         return occ_stats_dict 
 
+    def how_to_extract_occ_stat_dict(self):
+        print("extract_occ_stat_dict(occ_stats_dict <output from calculate_occ_stats()>, which_stat)")
+
     def extract_occ_stat_dict(self, occ_stats_dict, which_stat):
         stat_dict = {}
         for data_name, stats_data in occ_stats_dict.items():
@@ -749,6 +760,9 @@ class PrecipVerificationProcessor(object):
                     return
 
         return stat_dict
+    
+    def how_to_extract_occ_stat_data_array(self):
+        print("extract_occ_stat_data_array(occ_stats_dict <output from calculate_occ_stats()>, which_stat, data_name)")
 
     def extract_occ_stat_data_array(self, occ_stats_dict, which_stat, data_name):
         match which_stat:
@@ -815,9 +829,13 @@ class PrecipVerificationProcessor(object):
         return number_of_correct_negatives
 
     def how_to_calculate_aggregated_stats(self):
-        print('calculate_aggregated_stats(input_da_dict = None, time_period_type = None\n'
-              '                           agg_type = "space_time", stat_type = "mean",\n'
-              '                           pctl = 99, include_zeros = True, write_to_nc = False)\n')
+        print('calculate_aggregated_stats(input_da_dict = None,\n'
+              '                           time_period_type = None,\n'
+              '                           agg_type = "space_time",\n'
+              '                           stat_type = "mean",\n'
+              '                           pctl = 99,\n' 
+              '                           include_zeros = True,\n'
+              '                           write_to_nc = False)')
         print("NOTE:\n"
               "If input_da_dict is None, self.da_dict will be aggregated according to time_period_type, agg_type, and stat_type.")
 
@@ -972,9 +990,21 @@ class PrecipVerificationProcessor(object):
             above_thresh_dict[data_name] = above_thresh_da 
 
         return above_thresh_dict
+    
+    def how_to_calculate_pdf(self):
+        print('calculate_pdf(input_da_dict = None,\n'
+              '              time_period_type = "full_period",\n'
+              '              write_to_nc = False,\n'
+              '              bins = 10 <integer number of bins or array-like>)')
+        print("NOTE:\n"
+              "If input_data_dict is not None it will be used directly; otherwise self.da_dict will be used.\n")
 
     # Calculate probability density functions (PDFs)
-    def calculate_pdf(self, input_da_dict = None, time_period_type = "full_period", write_to_nc = False, bins = 10):
+    def calculate_pdf(self,
+                      input_da_dict = None,
+                      time_period_type = "full_period",
+                      write_to_nc = False,
+                      bins = 10):
         if input_da_dict is None:
             input_da_dict = self.da_dict
 
@@ -1318,11 +1348,14 @@ class PrecipVerificationProcessor(object):
 
     def how_to_calculate_aggregated_fss(self):
         print(f'calculate_aggregated_fss(external_fss_dict = None,\n'
-              f'                         eval_type = [{evaluate_by_radius_kw_str}, {evaluate_by_threshold_kw_str},\n'
-              f'                         {evaluate_by_radius_ari_threshold_kw_str}, {evaluate_by_ari_kw_str}],\n'
-              f'                         time_period_type = "full_period")')
+              f'                         eval_type = [{evaluate_by_radius_kw_str}, {evaluate_by_threshold_kw_str}, {evaluate_by_radius_ari_threshold_kw_str}, {evaluate_by_ari_kw_str}],\n'
+              f'                         time_period_type = "full_period",\n'
+              f'                         is_pctl_threshold = False)')
 
-    def calculate_aggregated_fss(self, external_fss_dict = None, eval_type = evaluate_by_radius_kw_str, time_period_type = "full_period",
+    def calculate_aggregated_fss(self,
+                                 external_fss_dict = None,
+                                 eval_type = evaluate_by_radius_kw_str,
+                                 time_period_type = "full_period",
                                  is_pctl_threshold = False):
         if (external_fss_dict is not None):
             if (eval_type == evaluate_by_radius_kw_str) or (eval_type == evaluate_by_radius_ari_threshold_kw_str): # By radius
@@ -1406,8 +1439,17 @@ class PrecipVerificationProcessor(object):
 
         return fss_agg_dict, afss_agg_dict, fss_uniform_agg_dict 
 
+    def how_to_calculate_aggregated_occ_stats(self):
+        print('calculate_aggregated_occ_stats(occ_stats_dict,\n'
+              '                               which_stat = "all",\n'
+              '                               time_period_type = "full_period",\n'
+              '                               write_to_nc = False)')
+
     # Calculated occurence statistics aggregated over specified time periods (common monthly, common seasonal, etc.)
-    def calculate_aggregated_occ_stats(self, which_stat = "all", time_period_type = "full_period", write_to_nc = False):
+    def calculate_aggregated_occ_stats(self,
+                                       which_stat = "all",
+                                       time_period_type = "full_period",
+                                       write_to_nc = False):
         # Process time_period_type: list of date times, dimension name, etc.
         dtimes, dim_name, time_period_str = self._process_time_period_type_to_dtimes(time_period_type)
 
@@ -1844,11 +1886,18 @@ class PrecipVerificationProcessor(object):
         return case_da_dict
 
     def how_to_plot_aggregated_occ_stats_by_threshold(self):
-        print('plot_aggregated_occ_stats_by_threshold(occ_stats_dict, which_stat = "CSI", time_period_type = "full_period",\n'
-               '                                      xaxis_explicit_values = False, plot_levels = None)')
+        print('plot_aggregated_occ_stats_by_threshold(occ_stats_dict,\n'
+              '                                       which_stat = "CSI",\n'
+              '                                       time_period_type = "full_period",\n'
+              '                                       xaxis_explicit_values = False,\n'
+              '                                       plot_levels = None)')
 
-    def plot_aggregated_occ_stats_by_threshold(self, occ_stats_dict, which_stat = "CSI", time_period_type = "full_period",
-                                               xaxis_explicit_values = False, plot_levels = None):
+    def plot_aggregated_occ_stats_by_threshold(self,
+                                               occ_stats_dict,
+                                               which_stat = "CSI",
+                                               time_period_type = "full_period",
+                                               xaxis_explicit_values = False,
+                                               plot_levels = None):
         # Based on this particular dataset, get a list of all the valid datetimes we're going to plot
         dtimes = sorted(list(occ_stats_dict.keys()))
 
@@ -2135,10 +2184,15 @@ class PrecipVerificationProcessor(object):
             plt.savefig(fig_path)
 
     def how_to_plot_fss_timeseries(self):
-        print("plot_fss_timeseries(eval_radius, eval_threshold, plot_levels = None)")
+        print("plot_fss_timeseries(eval_radius,\n"
+              "                    eval_threshold,\n"
+              "                    plot_levels = None)")
 
     # Plot time series of FSS for each valid time (i.e., each individual grid evaluation)
-    def plot_fss_timeseries(self, eval_radius, eval_threshold, plot_levels = None):
+    def plot_fss_timeseries(self,
+                            eval_radius,
+                            eval_threshold,
+                            plot_levels = None):
         if not(hasattr(self, "fss_dict_by_radius")) or not(hasattr(self, "fss_dict_by_threshold")):
             print("Error: You need to calculate FSS over varying evaluation radii and thresholds")
             return
@@ -2683,9 +2737,20 @@ class PrecipVerificationProcessor(object):
             plt.savefig(fig_path, bbox_inches = "tight")
 
     def how_to_plot_timeseries(self):
-        print('plot_timeseries(data_dict = None, time_period_type = None, stat_type = "mean", pctl = 99, plot_levels = None, \n'
-              '                calc_stats = True, write_stats = True, ann_plot = True, which_ann_text = "all", pct_errors_ann_text = True,\n'
-              '                plot_truth_data = True, plot_zero_line = False, write_to_nc = False, full_short_name_in_fig_name = False)')
+        print('plot_timeseries(data_dict = None,\n'
+              '                time_period_type = None,\n'
+              '                stat_type = "mean",\n'
+              '                pctl = 99,\n'
+              '                plot_levels = None,\n'
+              '                calc_stats = True,\n'
+              '                write_stats = True,\n'
+              '                ann_plot = True,\n'
+              '                which_ann_text = ["all", "corr", "errors"],\n'
+              '                pct_errors_ann_text = True,\n'
+              '                plot_truth_data = True,\n'
+              '                plot_zero_line = False,\n'
+              '                write_to_nc = False,\n'
+              '                full_short_name_in_fig_name = False)')
         print("NOTE:\n"
               "If data_dict is not None it will be used directly, without aggregation using time_period_type.\n"
               "So the contents of data_dict must already be properly aggregated for a time series.\n"
@@ -2693,9 +2758,21 @@ class PrecipVerificationProcessor(object):
               "If data_dict = None and self.USE_EXTERNAL_DA_DICT = True, self.da_dict will be used directly.\n"
               "So in the latter case, it's better to calculate data_dict with desired aggregation separately and pass it to plot_timeseries().")
 
-    def plot_timeseries(self, data_dict = None, time_period_type = None, stat_type = "mean", pctl = 99, plot_levels = None,
-                        calc_stats = True, write_stats = True, ann_plot = True, which_ann_text = "all", pct_errors_ann_text = True,
-                        plot_truth_data = True, plot_zero_line = False, write_to_nc = False, full_short_name_in_fig_name = False):
+    def plot_timeseries(self,
+                        data_dict = None,
+                        time_period_type = None,
+                        stat_type = "mean",
+                        pctl = 99,
+                        plot_levels = None,
+                        calc_stats = True,
+                        write_stats = True,
+                        ann_plot = True,
+                        which_ann_text = "all",
+                        pct_errors_ann_text = True,
+                        plot_truth_data = True,
+                        plot_zero_line = False,
+                        write_to_nc = False,
+                        full_short_name_in_fig_name = False):
         if (data_dict is None):
             if not(self.USE_EXTERNAL_DA_DICT):
                 data_dict = self.calculate_aggregated_stats(time_period_type = time_period_type, 
@@ -2918,9 +2995,21 @@ class PrecipVerificationProcessor(object):
         fig_fpath = os.path.join(self.plot_output_dir, fig_name)
         print(f"Saving {fig_fpath}")
         plt.savefig(fig_fpath)
+    
+    def how_to_plot_pdf(self):
+        print('plot_pdf(da_dict = None,\n'
+              '         time_period_type = "full_period",\n'
+              '         write_to_nc = False,\n'
+              '         bins = 10 <integer number of bins or array-like>)')
+        print("NOTE:\n"
+              "If data_dict is not None it will be used directly; otherwise self.da_dict will be used.\n")
 
     # TODO: Consider plotting at midpoint of bin rather than left edge of bin
-    def plot_pdf(self, data_dict = None, time_period_type = "full_period", write_to_nc = False, bins = 10):
+    def plot_pdf(self,
+                 data_dict = None,
+                 time_period_type = "full_period",
+                 write_to_nc = False,
+                 bins = 10):
         if (data_dict is None):
             if not(self.USE_EXTERNAL_DA_DICT):
                 data_dict = self.calculate_pdf(time_period_type = time_period_type, bins = bins) 

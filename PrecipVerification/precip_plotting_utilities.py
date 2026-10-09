@@ -460,14 +460,12 @@ datasets_colors_dict = {"AORC":                                     "blue",
                         "NestedEagle-fhr24":                       "black",
                         "NestedEagle-fhr48":                       "black",
                         "NestedReplay":                             "teal",
-                        "NestedReplayBetaCu":                  "slategrey",
-                        "NestedReplayDxMfluxImidgf0ForceOff":      "brown",
+                        "NestedReplayNewPhysics":                  "coral",
                         "NestedReplayDxMflux":                     "coral",
                         "NestedReplaySAS":                     "turquoise",
                         "NestedReplayNoConv":             "mediumseagreen",
                         "NRGl":                                     "teal",
-                        "NRGlBetaCu":                          "slategrey",
-                        "NRGlDxMfluxImidgf0ForceOff":              "brown",
+                        "NRGlNewPhysics":                          "coral",
                         "NRGlDxMflux":                             "coral",
                         "NRGlSAS":                             "turquoise",
                         "NRGlNoConv":                     "mediumseagreen",
@@ -1225,6 +1223,8 @@ def determine_xy_coordinates(data_array):
         return xyCoords(x = "x", y = "y")
     elif ("grid_xt" in coords) and ("grid_yt" in coords):
         return xyCoords(x = "grid_xt", y = "grid_yt")
+    elif ("ilon" in coords) and ("ilat" in coords):
+        return xyCoords(x = "ilon", y = "ilat")
     else:
         print(f"Error: Unrecognized x,y coordinates in {coords} \nCan't proceed with plotting")
         sys.exit(1)

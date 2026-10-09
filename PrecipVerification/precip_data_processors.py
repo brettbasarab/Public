@@ -37,6 +37,22 @@ def add_attributes_to_data_array(data_array, short_name = None, long_name = None
     if (interval_hours is not None): 
         data_array.attrs["interval_hours"] = interval_hours 
 
+# Calculate precip accumulated to specific output_temporal_res 
+def calculate_accum_precip(input_data, native_temporal_res, output_temporal_res):
+    time_step = int(output_temporal_res/native_temporal_res)
+    roller = input_data.rolling({utils.period_end_time_dim_str: time_step})
+
+    accum_precip = roller.sum()[(time_step - 1)::time_step,:,:]
+
+    accum_precip.name = utils.accum_precip_var_name
+    add_attributes_to_data_array(accum_precip,
+                                 short_name = f"{output_temporal_res:02d}-hour precipitation",
+                                 long_name = f"Precipitation accumulated over the prior {output_temporal_res:02d} hour(s)",
+                                 units = "mm",
+                                 interval_hours = output_temporal_res)
+
+    return accum_precip
+
 # Calculate 24-hour precipitation from hourly precipitation
 def calculate_24hr_accum_precip(input_data, output_temporal_res, native_temporal_res):
     time_step = int(output_temporal_res/native_temporal_res)
