@@ -41,7 +41,7 @@ stats_config:
 # Which statistics to calculate and plot
 do_stats:
   cmaps: # Contour maps of basic statistics: 'all', 'mean', 'pctls'
-  fss: False # Calculate FSS using amount thresholds
+  fss: True # Calculate FSS using amount thresholds
   fss_ari: False # Calculate FSS using ARI grid thresholds
   fss_pctl: False # Calculate FSS using percentile thresholds
   fss_timeseries: False # Timeseries of FSS at selected threshold over entire evaluation time period
