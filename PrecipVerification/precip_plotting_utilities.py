@@ -449,6 +449,16 @@ def construct_seasonal_string_list():
 # lines on timeseries plots
 datasets_colors_dict = {"AORC":                                     "blue",
                         "CONUS404":                               "purple",
+                        "CorrDiffMember00ERA5":                      "red",
+                        "CorrDiffMember01ERA5":                   "orange",
+                        "CorrDiffMember02ERA5":                     "gold",
+                        "CorrDiffMember03ERA5":                    "green",
+                        "CorrDiffEnsembleMeanERA5":                "coral",
+                        "CorrDiffMember00GEFS":                      "red",
+                        "CorrDiffMember01GEFS":                   "orange",
+                        "CorrDiffMember02GEFS":                     "gold",
+                        "CorrDiffMember03GEFS":                    "green",
+                        "CorrDiffEnsembleMeanGEFS":                "coral",
                         "ERA5":                                      "red",
                         "GFS":                                      "gold",
                         "HRRR":                                     "cyan",
@@ -479,23 +489,30 @@ datasets_colors_dict = {"AORC":                                     "blue",
 class DatasetPlotStyle:
     color: str
     linestyle: str 
-datasets_linestyles_dict = {"AORC":                  DatasetPlotStyle(color = "blue", linestyle = "solid"), 
-                            "CONUS404":              DatasetPlotStyle(color = "purple", linestyle = "solid"),
-                            "ERA5":                  DatasetPlotStyle(color = "red", linestyle = "solid"),
-                            "GFS":                   DatasetPlotStyle(color = "gold", linestyle = "solid"),
-                            "HRRR":                  DatasetPlotStyle(color = "cyan", linestyle = "solid"),
-                            "HRRR-06hr":             DatasetPlotStyle(color = "slategrey", linestyle = "solid"),
-                            "IMERG":                 DatasetPlotStyle(color = "green", linestyle = "solid"),
-                            "NestedEagle":           DatasetPlotStyle(color = "black", linestyle = "solid"),
-                            "NestedEagle-fhr06":     DatasetPlotStyle(color = "black", linestyle = "solid"),
-                            "NestedEagle-fhr12":     DatasetPlotStyle(color = "black", linestyle = "solid"),
-                            "NestedEagle-fhr24":     DatasetPlotStyle(color = "black", linestyle = "solid"),
-                            "NestedEagle-fhr48":     DatasetPlotStyle(color = "black", linestyle = "solid"),
-                            "NestedReplay":          DatasetPlotStyle(color = "teal", linestyle = "solid"),
-                            "NestedReplaySAS":       DatasetPlotStyle(color = "teal", linestyle = "dashed"),
-                            "NestedReplayNoConv":    DatasetPlotStyle(color = "teal", linestyle = "dotted"),
-                            "NestedReplayPredictor": DatasetPlotStyle(color = "cadetblue", linestyle = "solid"),
-                            "Replay":                DatasetPlotStyle(color = "orange", linestyle = "solid"),
+datasets_linestyles_dict = {"AORC":                   DatasetPlotStyle(color = "blue", linestyle = "solid"), 
+                            "CONUS404":               DatasetPlotStyle(color = "purple", linestyle = "solid"),
+                            "ERA5":                   DatasetPlotStyle(color = "red", linestyle = "solid"),
+                            "GFS":                    DatasetPlotStyle(color = "gold", linestyle = "solid"),
+                            "HRRR":                   DatasetPlotStyle(color = "cyan", linestyle = "solid"),
+                            "HRRR-06hr":              DatasetPlotStyle(color = "slategrey", linestyle = "solid"),
+                            "IMERG":                  DatasetPlotStyle(color = "green", linestyle = "solid"),
+                            "NestedEagle":            DatasetPlotStyle(color = "black", linestyle = "solid"),
+                            "NestedEagle-fhr06":      DatasetPlotStyle(color = "black", linestyle = "solid"),
+                            "NestedEagle-fhr12":      DatasetPlotStyle(color = "black", linestyle = "solid"),
+                            "NestedEagle-fhr24":      DatasetPlotStyle(color = "black", linestyle = "solid"),
+                            "NestedEagle-fhr48":      DatasetPlotStyle(color = "black", linestyle = "solid"),
+                            "NestedReplay":           DatasetPlotStyle(color = "teal", linestyle = "solid"),
+                            "NestedReplayNewPhysics": DatasetPlotStyle(color = "coral", linestyle = "solid"),
+                            "NestedReplayDxMflux":    DatasetPlotStyle(color = "coral", linestyle = "solid"),
+                            "NestedReplaySAS":        DatasetPlotStyle(color = "teal", linestyle = "dashed"),
+                            "NestedReplayNoConv":     DatasetPlotStyle(color = "teal", linestyle = "dotted"),
+                            "NRGl":                   DatasetPlotStyle(color = "teal", linestyle = "solid"),
+                            "NRGlNewPhysics":         DatasetPlotStyle(color = "coral", linestyle = "solid"),
+                            "NRGlDxMflux":            DatasetPlotStyle(color = "coral", linestyle = "solid"),
+                            "NRGlSAS":                DatasetPlotStyle(color = "turquoise", linestyle = "solid"),
+                            "NRGlNoConv":             DatasetPlotStyle(color = "mediumseagreen", linestyle = "solid"),
+                            "NestedReplayPredictor":  DatasetPlotStyle(color = "cadetblue", linestyle = "solid"),
+                            "Replay":                 DatasetPlotStyle(color = "orange", linestyle = "solid"),
                            }
 
 # Get the name of the time dimension from a data array
@@ -1289,7 +1306,10 @@ def plot_cmap_single_panel(data_array,
 
         # Select data to plot (at one valid time)
         if has_time_dim:
-            data_to_plot = data_array.loc[loc_str]
+            try:
+                data_to_plot = data_array.loc[loc_str]
+            except KeyError: # Needed for datasets like HRRRCast with 2D latitude/longitude coordinates with dimensions also named latitude/longitude
+                data_to_plot = data_array.loc[{time_dim: loc_str}] 
         else:
             data_to_plot = data_array
             

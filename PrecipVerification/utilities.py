@@ -11,7 +11,6 @@ import pandas as pd
 import subprocess
 import sys
 import time as time_module
-import utilities as utils
 import warnings
 import xarray as xr
 from netCDF4 import Dataset
@@ -109,8 +108,8 @@ def convert_period_end_to_period_begin(data_array, temporal_res = 24):
     period_end_times = [pd.Timestamp(i) for i in data_array.period_end_time.values]
     period_begin_times = [i - pd.Timedelta(hours = temporal_res) for i in period_end_times]
    
-    data_array_period_begin = data_array.rename({utils.period_end_time_dim_str: utils.period_begin_time_dim_str})
-    data_array_period_begin.coords[utils.period_begin_time_dim_str] = period_begin_times 
+    data_array_period_begin = data_array.rename({period_end_time_dim_str: period_begin_time_dim_str})
+    data_array_period_begin.coords[period_begin_time_dim_str] = period_begin_times 
 
     return data_array_period_begin
 
@@ -119,8 +118,8 @@ def convert_period_begin_to_period_end(data_array, temporal_res = 24):
     period_begin_times = [pd.Timestamp(i) for i in data_array.period_begin_time.values]
     period_end_times  = [i + pd.Timedelta(hours = temporal_res) for i in period_begin_times]
 
-    data_array_period_end = data_array.rename({utils.period_begin_time_dim_str: utils.period_end_time_dim_str})
-    data_array_period_end.coords[utils.period_end_time_dim_str] = period_end_times
+    data_array_period_end = data_array.rename({period_begin_time_dim_str: period_end_time_dim_str})
+    data_array_period_end.coords[period_end_time_dim_str] = period_end_times
 
     return data_array_period_end
 
@@ -296,35 +295,55 @@ def read_ds_template_for_xesmf_interp(ds_name):
     
     return ds
 
-def add_bounds(ds, long_lat_lon_key_names = False):
-    if long_lat_lon_key_names:
-        key_list = ["latitude", "longitude"]
-    else:
-        key_list = ["lat", "lon"]
+# 20261028: Commented in favor of updated add_bounds function below, based on 
+# feedback from Gemini AI to correctly handle conservative interpolation between
+# HRRRCast and AORC grids.
+#def add_bounds(ds, lat_lon_key_names):
+#    key_list = list(lat_lon_key_names) 
+#
+#    ds = ds.cf.add_bounds(key_list)
+#    for key in key_list:
+#        corners = cfxr.bounds_to_vertices(bounds = ds[f"{key}_bounds"], bounds_dim = "bounds", order = None)
+#        ds = ds.assign_coords({f"{key}_b": corners})
+#        ds = ds.drop_vars(f"{key}_bounds")
+#
+#    # In Tim Smith's code but doesn't work here (because we don't have the 'x_vertices' and
+#    # 'y_vertices' dimensions, so this step isn't necessary).
+    # ds = ds.rename({"x_vertices": "x_b", "y_vertices": "y_b"})
+#
+#    return ds
+
+def add_bounds(ds, lat_lon_key_names):
+    key_list = list(lat_lon_key_names)
 
     ds = ds.cf.add_bounds(key_list)
     for key in key_list:
-      corners = cfxr.bounds_to_vertices(bounds = ds[f"{key}_bounds"], bounds_dim = "bounds", order = None)
-      ds = ds.assign_coords({f"{key}_b": corners})
-      ds = ds.drop_vars(f"{key}_bounds")
-
-    # In Tim Smith's code but doesn't work here (because we don't have the 'x_vertices' and
-    # 'y_vertices' dimensions, so this step isn't necessary).
-    # ds = ds.rename({"x_vertices": "x_b", "y_vertices": "y_b"})
-
+        corners = cfxr.bounds_to_vertices(bounds = ds[f"{key}_bounds"], bounds_dim = "bounds", order = None)
+        
+        # Clear inherited CF attributes so cf_xarray doesn't misidentify corners as primary coordinates
+        corners.attrs = {}
+        
+        ds = ds.assign_coords({f"{key}_b": corners})
+        
     return ds
 
 def run_xesmf_interp(in_ds_template, # Dataset on input grid 
                      out_ds_template, # Dataset on output grid
-                     input_ds, # The actual data to regrid 
+                     input_ds, # The actual data to regrid
+                     lat_lon_key_names, 
+                     out_lat_lon_key_names,
                      interp_method = "conservative",
                      is_curvilinear = True,
-                     read_regridder = False,
-                     long_lat_lon_key_names = False):
+                     output_is_curvilinear = False,
+                     read_regridder = False):
 
     # Add bounds to facilitate regridding from an input curvilinear grid
     if is_curvilinear:
-        in_ds_template = utils.add_bounds(in_ds_template, long_lat_lon_key_names = long_lat_lon_key_names)
+        in_ds_template = add_bounds(in_ds_template, lat_lon_key_names)
+
+    # Add bounds to output grid that's curvilinear to facilitate regridding to that grid
+    if output_is_curvilinear:
+        out_ds_template = add_bounds(out_ds_template, out_lat_lon_key_names)
 
     regridder_fpath = os.path.join(regridders_dir,
                                    f"Regridder.{in_ds_template.ds_name}_to_{out_ds_template.ds_name}.{interp_method}.nc")

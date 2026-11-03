@@ -221,10 +221,9 @@ def write_data_array_to_netcdf(data_array, output_var_name, dir_name, fname_pref
             hour_span_timestamp = f".{first_timestamp.hour:02d}z-{first_timestamp.hour:02d}z"
             dir_name += hour_span_timestamp
 
-        if (not os.path.exists(dir_name)):
-            print(f"Creating directory {dir_name}")
-            if not(testing):
-                os.mkdir(dir_name)
+        print(f"Creating directory {dir_name}")
+        if not(testing):
+            os.makedirs(dir_name, exist_ok = True)
 
         if (file_cadence == "interval_hours"):
             for valid_dt in data_array["period_end_time"].values:
@@ -1626,6 +1625,221 @@ class AorcDataProcessor(object):
             timestamp_format = "%Y%m%d"
         
         write_data_array_to_netcdf(full_data_array,
+                                   output_var_name,
+                                   dir_name,
+                                   fname_prefix,
+                                   timestamp_format,
+                                   temporal_res = temporal_res,
+                                   file_cadence = file_cadence,
+                                   testing = testing)
+
+# NOTE: This class does not include the capability to perform any 
+# interpolation. Interpolation of CorrDiff data from its 2D grid is
+# handled by interp_with_xesmf.py
+class CorrDiffDataProcessor(object):
+    def __init__(self,
+                 start_dt_str,
+                 end_dt_str,
+                 native_data_dir = "/data/bbasarab/netcdf/EXCEED_NativeData/CorrDiff",
+                 training_data_name = "era5", # or 'gefs' or ''
+                 region = "CONUS",
+                 user_dir = "bbasarab"):
+
+        # Process start and end datetime strings into all the date/time info we'll need
+        self.start_dt_str = start_dt_str
+        self.end_dt_str = end_dt_str
+        self.start_dt = check_model_valid_dt_format(self.start_dt_str, resolution = 3)
+        self.end_dt = check_model_valid_dt_format(self.end_dt_str, resolution = 3)
+        self.first_day_dt = dt.datetime(self.start_dt.year, self.start_dt.month, self.start_dt.day)
+        self.final_day_dt = dt.datetime(self.end_dt.year, self.end_dt.month, self.end_dt.day)
+
+        # Set time dimension names
+        self.time_dim_name = utils.time_dim_str 
+        self.period_begin_time_dim_str = utils.period_begin_time_dim_str 
+        self.period_end_time_dim_str = utils.period_end_time_dim_str
+ 
+        # File reading/writing and plotting
+        self.native_data_dir = native_data_dir
+        self.training_data_name = training_data_name
+        self.region = region
+        self.user_dir = user_dir
+        self.home_dir = os.path.join("/home", self.user_dir)
+        self.data_dir = os.path.join("/data", self.user_dir) 
+        self.plot_output_dir = os.path.join(self.home_dir, "plots") 
+        self.netcdf_output_dir = os.path.join(self.data_dir, "netcdf")        
+
+        # Read native precipitation data that we will process 
+        self._construct_valid_dt_lists()
+        self._construct_input_file_list()
+        self._read_input_files()
+
+        # Extract 3-hourly accumulated precipitation amounts (native CorrDiff data are 3-hourly) 
+        self._process_corrdiff_native_accum_precip()
+
+    ##### GETTER METHODS (CorrDiffDataProcessor) #####
+    def get_precip_data(self, temporal_res = "native", ensemble_member = None, load = False):
+        match temporal_res:
+            case "native":
+                data_array = self.corrdiff_native_accum_precip
+            case 3: 
+                data_array = self.corrdiff_native_accum_precip
+            case _:
+                data_array = self._calculate_corrdiff_accum_precip(time_period_hours = temporal_res)
+
+        if load:
+            print(f"Loading precip data for CorrDiff")
+            data_array.load()
+
+
+        if (ensemble_member == "mean"):
+            return data_array.mean(dim = "sample", keep_attrs = True)
+        elif (type(ensemble_member) is int) and (ensemble_member >= 0) and (ensemble_member <= 3):
+            return data_array.sel(sample = ensemble_member)
+        else: 
+            return data_array
+ 
+    def how_to_get_precip_data(self):
+        print("**** HOW TO GET CorrDiff PRECIP DATA:")
+        print("Call get_precip_data(temporal_res = 'native', load = False)")
+        print("The argument temporal_res can be 'native' or an integer representing the desired temporal resolution in hours")
+
+    ##### PRIVATE METHODS (CorrDiffDataProcessor) #####
+    def _construct_valid_dt_lists(self):
+        # Construct datetimes valid at end of each period (this is how CorrDiff data are presented)
+        current_dt = self.start_dt
+        self.valid_dt_list = [current_dt]
+        while (current_dt != self.end_dt):
+            current_dt += dt.timedelta(hours = 3)
+            self.valid_dt_list.append(current_dt)
+
+        # Now construct list of valid days (CorrDiff files are daily) 
+        self.daily_dt_list = list(dateutil.rrule.rrule(dateutil.rrule.DAILY, dtstart = self.first_day_dt, until = self.final_day_dt))
+
+    def _construct_input_file_list(self):
+        self.input_file_list = []
+        prefix = "corrdiff_us"
+        if (self.training_data_name == "era5") or (self.training_data_name == "gefs"):
+            prefix += f"_{self.training_data_name}"
+        for valid_dt in self.daily_dt_list:
+            file_base_pattern = f"{prefix}_{valid_dt:%Y%m%d}T00.nc"
+            file_path = os.path.join(self.native_data_dir, file_base_pattern)
+
+            # Proceed to next file if a file doesn't exist (but need to handle any data gaps correctly)
+            if (not os.path.exists(file_path)):
+                print(f"Warning: Input file path {file_path} does not exist")
+                continue
+
+            self.input_file_list.append(file_path)
+            
+    def _read_input_files(self):
+        print(f"Reading CorrDiff data from netCDF files into xarray Dataset")
+        ds = xr.open_mfdataset(self.input_file_list)
+            
+        # In CorrDiff native grid datasets, the lat/lon arrays exist as
+        # daa variables rather than coordinates. Add them as coordinates.
+        self.xr_dataset = ds.set_coords(["lat", "lon"])
+
+    # Process CorrDiff native precip data from (time * lead_time) dimensions to 'reanalysis-like' single period_end_time dimension 
+    def _process_corrdiff_native_accum_precip(self):
+        da = self.xr_dataset["tp"]
+        da = da.sel(lead_time = slice(3, 24))
+
+        init_dtimes = [pd.Timestamp(i) for i in da.time.values]
+        lead_times = da.lead_time.values
+        period_end_times = [dtime + pd.Timedelta(hours = i) for dtime in init_dtimes for i in lead_times] 
+        da_list_to_concat = []
+        for d in init_dtimes:
+            for l in lead_times:
+                da_list_to_concat.append(da.sel(time = d, lead_time = l).expand_dims(dim = {"period_end_time": [d + pd.Timedelta(hours = l)]}))
+
+        self.corrdiff_native_accum_precip = xr.concat(da_list_to_concat, dim = "period_end_time")
+        add_attributes_to_data_array(self.corrdiff_native_accum_precip,
+                                     short_name = f"03-hour precipitation",
+                                     long_name = f"Precipitation accumulated over the prior 3 hours",
+                                     units = "mm", 
+                                     interval_hours = 3)
+
+        # If processing GEFS-driven data, each '3-hourly' total will actually be hourly, so
+        # multiply by 3 to approximate (extremely crudely) 3-hourly totals per a 20261029
+        # email from Sepideh Khajehei (NVIDIA).
+        if (self.training_data_name == "gefs"):
+            self.corrdiff_native_accum_precip *= 3  
+
+    # Sum totals at the CorrDiff native 3-hourly temporal resolution to derive totals over longer time periods
+    # (3, 6, 12, 24 hours...).
+    def _calculate_corrdiff_accum_precip(self, time_period_hours = 3):
+        if (time_period_hours < 3):
+            print("Error: Highest temporal resolution of CorrDiff data is 3 hours")
+
+        time_step = int(time_period_hours/3)
+        raw_data = self.corrdiff_native_accum_precip
+        roller = raw_data.rolling({self.period_end_time_dim_str: time_step})
+        accum_precip_data_array = roller.sum()[(time_step - 1)::time_step,:,:]
+
+        add_attributes_to_data_array(accum_precip_data_array,
+                                     short_name = f"{time_period_hours:02d}-hour precipitation",
+                                     long_name = f"Precipitation accumulated over the prior {time_period_hours} hour(s)",
+                                     units = self.corrdiff_native_accum_precip.units,
+                                     interval_hours = time_period_hours)
+
+        return accum_precip_data_array
+    
+    ##### PUBLIC METHODS (CorrDiffDataProcessor) #####
+    # Outputs data at native CorrDiff resolution only
+    def write_precip_data_to_netcdf(self,
+                                    temporal_res = "native",
+                                    spatial_res = "native",
+                                    file_cadence = "day",
+                                    mean_only = False, 
+                                    testing = False):
+        # Get data to write
+        full_data_array = self.get_precip_data(temporal_res = temporal_res, load = True)
+
+        # Configure output-related strings
+        output_var_name = f"precipitation_{temporal_res:02d}_hour"
+        formatted_short_name = f"{temporal_res:02d}_hour_precipitation"
+        output_grid_string = set_grid_name_for_file_names("native")
+        
+        # Construct timestamp format
+        if (temporal_res == "native"):
+            timestamp_format = "%Y%m%d.%H%M"
+        elif (temporal_res < 24):
+            timestamp_format = "%Y%m%d.%H"
+        else:
+            timestamp_format = "%Y%m%d"
+
+        training_data_output_str = ""
+        if (self.training_data_name == "gefs"):
+            training_data_output_str = "GEFS"
+
+        # Write individual ensemble members
+        if not(mean_only):
+            for ensemble_member in [0, 1, 2, 3]:
+                output_da = full_data_array.sel(sample = ensemble_member)
+                output_da.name = output_var_name
+                
+                # Construct file directory
+                fname_prefix = f"CorrDiffMember{ensemble_member:02d}{training_data_output_str}.{output_grid_string}.{formatted_short_name}"
+                dir_name = os.path.join(self.netcdf_output_dir, fname_prefix)
+                
+                write_data_array_to_netcdf(output_da,
+                                           output_var_name,
+                                           dir_name,
+                                           fname_prefix,
+                                           timestamp_format,
+                                           temporal_res = temporal_res,
+                                           file_cadence = file_cadence,
+                                           testing = testing)
+            
+        # Write ensemble mean
+        output_da = full_data_array.mean(dim = "sample", keep_attrs = True)
+        output_da.name = output_var_name
+
+        # Construct file directory
+        fname_prefix = f"CorrDiffEnsembleMean{training_data_output_str}.{output_grid_string}.{formatted_short_name}"
+        dir_name = os.path.join(self.netcdf_output_dir, fname_prefix)
+        
+        write_data_array_to_netcdf(output_da,
                                    output_var_name,
                                    dir_name,
                                    fname_prefix,
