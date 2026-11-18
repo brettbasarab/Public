@@ -1134,29 +1134,36 @@ class PrecipVerificationProcessor(object):
         else:
             pctl_stat_type = "pctl_exclude_zeros"
 
-        # Calculate percentiles over full evaluation period, to be used for FSS calculations, using percentile thresholds,
-        # if pctl_over_eval_period = True (instead of using percentile thresholds calculated for each individual grid).
+        # Initialize pctl_over_eval_period_dict with dummy values since it used in calls to
+        # _calculate_fss_single_grid() below.
         pctl_over_eval_period_dict = {}
-        if (eval_type == evaluate_by_radius_kw_str): # Evaluate by radius
-            fixed_pctl_dict = self.calculate_aggregated_stats(time_period_type = "full_period", agg_type = "space_time",
-                                                              stat_type = pctl_stat_type, pctl = fixed_threshold)
-            for data_name in data_names: 
-                pctl_over_eval_period_dict[data_name] = fixed_pctl_dict[data_name].item()
-        else: # Evaluate by threshold
-            for p, pctl_threshold in enumerate(eval_threshold_list):
-                current_pctl_dict = self.calculate_aggregated_stats(time_period_type = "full_period", agg_type = "space_time",
-                                                                    stat_type = pctl_stat_type, pctl = pctl_threshold)
-
+        for data_name, da in self.da_dict.items():
+            pctl_over_eval_period_dict[data_name] = None
+       
+        # Populate pctl_over_eval_period_dict: Calculate percentiles over full evaluation period
+        # to be used for FSS calculations, if is_pctl_threshold=True and pctl_over_eval_period=True,
+        # instead of using percentile thresholds calculated for each individual grid.
+        if (is_pctl_threshold and pctl_over_eval_period):
+            if (eval_type == evaluate_by_radius_kw_str): # Evaluate by radius
+                fixed_pctl_dict = self.calculate_aggregated_stats(time_period_type = "full_period", agg_type = "space_time",
+                                                                  stat_type = pctl_stat_type, pctl = fixed_threshold)
                 for data_name in data_names: 
-                    if (p == 0):
-                        pctl_over_eval_period_dict[data_name] = [ current_pctl_dict[data_name].item() ]
-                    else:
-                        pctl_over_eval_period_dict[data_name].append(current_pctl_dict[data_name].item())
+                    pctl_over_eval_period_dict[data_name] = fixed_pctl_dict[data_name].item()
+            else: # Evaluate by threshold
+                for p, pctl_threshold in enumerate(eval_threshold_list):
+                    current_pctl_dict = self.calculate_aggregated_stats(time_period_type = "full_period", agg_type = "space_time",
+                                                                        stat_type = pctl_stat_type, pctl = pctl_threshold)
 
-            # Convert to DataArrays
-            # FIXME: Is there a way to do this without another loop through the pctl_over_eval_period_dict dictionary?
-            for data_name, pctl_vals_list in pctl_over_eval_period_dict.items():
-                pctl_over_eval_period_dict[data_name] = xr.DataArray(pctl_vals_list, dims = ["pctl"], coords = [eval_threshold_list])
+                    for data_name in data_names: 
+                        if (p == 0):
+                            pctl_over_eval_period_dict[data_name] = [ current_pctl_dict[data_name].item() ]
+                        else:
+                            pctl_over_eval_period_dict[data_name].append(current_pctl_dict[data_name].item())
+
+                # Convert to DataArrays
+                # FIXME: Is there a way to do this without another loop through the pctl_over_eval_period_dict dictionary?
+                for data_name, pctl_vals_list in pctl_over_eval_period_dict.items():
+                    pctl_over_eval_period_dict[data_name] = xr.DataArray(pctl_vals_list, dims = ["pctl"], coords = [eval_threshold_list])
 
         self.fss_eval_radius_units = radius_units
         if is_pctl_threshold:
@@ -1277,11 +1284,18 @@ class PrecipVerificationProcessor(object):
                         fss_list.append(FSS)
                 else:
                     for threshold in eval_threshold_list:
+                        if pctl_over_eval_period:
+                            external_pctl_value_qpf = pctl_over_eval_period_dict[data_name].sel(pctl = threshold).item() 
+                            external_pctl_value_qpe = pctl_over_eval_period_dict[self.truth_data_name].sel(pctl = threshold).item()
+                        else:
+                            external_pctl_value_qpf = None
+                            external_pctl_value_qpe = None 
+
                         FSS = self._calculate_fss_single_grid(qpf, qpe, fixed_radius, threshold,
                                                               is_pctl_threshold = is_pctl_threshold,
                                                               pctl_over_eval_period = pctl_over_eval_period,
-                                                              external_pctl_value_qpf = pctl_over_eval_period_dict[data_name].sel(pctl = threshold).item(),
-                                                              external_pctl_value_qpe = pctl_over_eval_period_dict[self.truth_data_name].sel(pctl = threshold).item(),
+                                                              external_pctl_value_qpf = external_pctl_value_qpf,
+                                                              external_pctl_value_qpe = external_pctl_value_qpe, 
                                                               include_zeros = include_zeros)
                         fss_list.append(FSS)
     
