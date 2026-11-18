@@ -26,9 +26,9 @@ LAT_LON_2D: False
 regions_info:
   "US-California":
     region_extent: [-125, -108, 33, 49]
-    figsize_sp: !!python/tuple [13, 12]
-    figsize: !!python/tuple [14, 9]
-    figsize_errors: !!python/tuple [14, 9]
+    figsize_sp: !!python/tuple [12, 12]
+    figsize: !!python/tuple [12, 12]
+    figsize_errors: !!python/tuple [12, 13]
     subplot_layout: "grid"
     cm_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
     ts_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
@@ -52,7 +52,7 @@ stats_config:
 # Which statistics to calculate and plot
 do_stats:
   cmaps: # Contour maps of basic statistics: 'all', 'mean', 'pctls'
-  fss: False # Calculate FSS using amount thresholds
+  fss: True # Calculate FSS using amount thresholds
   fss_ari: False # Calculate FSS using ARI grid thresholds
   fss_pctl: False # Calculate FSS using percentile thresholds
   fss_timeseries: False # Timeseries of FSS at selected threshold over entire evaluation time period

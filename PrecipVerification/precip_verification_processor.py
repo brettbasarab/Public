@@ -627,10 +627,10 @@ class PrecipVerificationProcessor(object):
         return self.num_valid_times
 
     def get_summed_data(self) -> Dict[str, Any]:
-        if not(hasattr(self, "da_dict_summed_time")):
+        if not(hasattr(self, "summed_dict")):
             self.sum_data_over_full_time_period()
  
-        return self.da_dict_summed_time
+        return self.summed_dict
 
     ##### Public methods stats calculations #####
     def how_to_calculate_occ_stats(self):
@@ -1514,7 +1514,7 @@ class PrecipVerificationProcessor(object):
     
     def sum_data_over_full_time_period(self):
         print("Calculating data summed over full time period")
-        self.da_dict_summed_time = {} 
+        self.summed_dict = {} 
         for data_name, da in self.da_dict.items():
             # Keep time dimension in summmed data array so we are able to operate on this
             # dimension in various plotting method and related helper methods.
@@ -1535,7 +1535,7 @@ class PrecipVerificationProcessor(object):
                                                long_name = f"Precipitation accumulated over the prior {total_time_period_hours} hour(s)",
                                                units = da.units,
                                                interval_hours = total_time_period_hours) 
-            self.da_dict_summed_time[data_name] = da_summed_time 
+            self.summed_dict[data_name] = da_summed_time 
     ##### END Public methods stats calculations #####
 
     ##### Private methods to support stats calculations #####
@@ -2248,182 +2248,12 @@ class PrecipVerificationProcessor(object):
         print(f"Saving {fig_path}")
         plt.savefig(fig_path)
 
-    def how_to_OLD_plot_cmap_multi_panel(self):
-        print('plot_cmap_multi_panel(data_dict = None, figsize = None, extend = "max",\n'
-              '                      plot_levels = self.plot_levels, plot_cmap = self.plot_cmap,\n'
-              '                      time_period_type = None, stat_type = "mean", pctl = 99,\n'
-              '                      single_colorbar = True, single_set_of_levels = True,\n'
-              '                      plot_errors = False, error_plot_levels = None,\n'
-              '                      truth_data_contour = None, write_to_nc = False)\n')
-        print("NOTE:\n"
-              "If data_dict is not None it will be used directly, without aggregation using time_period_type.\n"
-              "So in this case, the contents of data_dict must already be properly aggregated for desired contour maps.\n"
-              "If data_dict = None and self.USE_EXTERNAL_DA_DICT = False, self.da_dict will be aggregated, then plotted, according to time_period_type and stat_type.\n"
-              "If data_dict = None and self.USE_EXTERNAL_DA_DICT = True, self.da_dict will be used directly.\n"
-              "So in the latter case, it's better to calculate data_dict with desired aggregation separately and pass it to plot_cmap_multi_panel().")
-
-    # Contour maps with the correct number of panels, with the "truth" dataset always in the top left
-    # The input da_dict must have the same contents as self.data_dict: {da_name1: da1, ...., da_nameN, daN}
-    # So, best practice is to have whatever data you want to plot exist as concatenated xarray DataArrays
-    # with the proper time dimensions, as this method will make a plot for each coordinate of the time dimension.
-    def OLD_plot_cmap_multi_panel(self, data_dict = None, figsize = None, extend = "max",
-                              plot_levels = None, plot_cmap = None,
-                              time_period_type = None, stat_type = "mean", pctl = 99,
-                              single_colorbar = True, single_set_of_levels = True,
-                              plot_errors = False, error_plot_levels = None,
-                              truth_data_contour = None, write_to_nc = False):
-        if (data_dict is None):
-            if not(self.USE_EXTERNAL_DA_DICT): 
-                data_dict = self.calculate_aggregated_stats(time_period_type = time_period_type, 
-                                                            stat_type = stat_type,
-                                                            agg_type = "time",
-                                                            pctl = pctl,
-                                                            write_to_nc = write_to_nc) 
-            else:
-                data_dict = self.da_dict
-
-        if (plot_levels is None):
-            plot_levels = self.plot_levels
-
-        if (plot_cmap is None):
-            plot_cmap = self.plot_cmap
-
-        # Configure basic info about the data
-        truth_da = data_dict[self.truth_data_name]
-        num_da = len(data_dict.items())
-        data_names_str = "".join(f"{key}." for key in data_dict.keys())
-
-        # Get the contour levels for the plot
-        if (plot_levels is not None):
-            levels = plot_levels
-            _, error_levels = self._calculate_levels_for_cmap(data_dict)
-        else: 
-            levels, error_levels = self._calculate_levels_for_cmap(data_dict)
-
-        if (error_plot_levels is not None):
-            error_levels = error_plot_levels
-        
-        # Based on this particular dataset, get a list of all the valid datetimes we're going to plot 
-        dtimes, time_dim, dt_format = self._create_datetime_list_from_da_time_dim(truth_da)
-
-        # Set map projection to be used for all subplots in the figure 
-        proj = ccrs.PlateCarree()
-
-        # Loop through these datetimes, making figures with subplots corresponding to each of the data arrays in data_dict
-        for dtime in dtimes:
-            if (figsize is not None):
-                fig = plt.figure(figsize = figsize)
-            else:
-                fig = plt.figure(figsize = ppu.set_figsize_based_on_num_da(num_da, self.region_plot_config)) 
-            axes_list, cbar_ax = ppu.OLD_create_gridded_subplots(num_da, proj, single_colorbar = single_colorbar) 
-
-            if (type(dtime) is pd.Timestamp):
-                loc_str = dtime.strftime(utils.full_date_format_str) # Format is %Y-%m-%d %H:%M:%S
-                dt_str = dtime.strftime(dt_format) 
-            elif (type(dtime) is str):
-                loc_str = dtime
-                dt_str = dtime
-            else:
-                print(f"Invalid datetime {dtime} to select data; not continuing to make plots")
-                return 
-      
-            # Create different contour levels for each dtime rather than a fixed set of levels for all dtimes.
-            # Note the levels will all be the same (e.g., error levels) within one single figure, as one output
-            # figure corresponds to one dtime. 
-            if not(single_set_of_levels):
-                data_to_plot_dict = {}
-                for data_name, da in data_dict.items():
-                    data_to_plot_dict[data_name] = da.loc[loc_str]
-                levels, error_levels = self._calculate_levels_for_cmap(data_to_plot_dict)
-
-            # Loop through each of the subplot axes defined above (one axis for each DataArray) and plot the data 
-            for axis, (data_name, da) in zip(axes_list, data_dict.items()):
-                self._add_cartopy_features_to_map_proj(axis, proj, draw_labels = False)
-        
-                xy_coords = ppu.determine_xy_coordinates(da)
-
-                if (plot_errors) and (data_name != self.truth_data_name):
-                    data_to_plot = (da - truth_da).loc[loc_str]
-                    plot_levels = error_levels
-                    subplot_title = f"{data_name} errors"
-                    cmap = "seismic_r"
-                    cbar_extend = "both" # Need to extend colorbar in both directions for error cmaps
-                else:
-                    data_to_plot = da.loc[loc_str]
-                    plot_levels = levels
-                    subplot_title = data_name
-                    cmap = plot_cmap
-                    cbar_extend = extend 
-                    if (extend != "min") and (extend != "max") and (extend != "both"):
-                        cbar_extend = "both"
-
-                # One colorbar for entire figure; add as its own separate axis defined using subplot2grid 
-                if single_colorbar:
-                    plot_handle = data_to_plot.plot(ax = axis, levels = plot_levels, transform = proj, extend = cbar_extend, cmap = cmap,
-                                                    x = xy_coords.x, y = xy_coords.y, 
-                                                    add_colorbar = not(single_colorbar))
-                    cbar = fig.colorbar(plot_handle, cax = cbar_ax, ticks = plot_levels, shrink = 0.5, orientation = "horizontal")
-                    cbar.set_label(da.units, size = 15)
-                    cbar_tick_labels_rotation, cbar_tick_labels_fontsize = ppu.set_cbar_labels_rotation_and_fontsize(self.region_plot_config, plot_levels, num_da, for_single_cbar = True)
-                    cbar.ax.set_xticklabels(plot_levels, rotation = cbar_tick_labels_rotation) 
-                    cbar.ax.tick_params(labelsize = cbar_tick_labels_fontsize)
-                # Separate colorbar for each subplot
-                else:
-                    plot_handle = data_to_plot.plot(ax = axis, levels = plot_levels, transform = proj, extend = cbar_extend, cmap = cmap,
-                                                    x = xy_coords.x, y = xy_coords.y,
-                                                    cbar_kwargs = {"shrink": 0.6, "ticks": plot_levels, "pad": 0.02, "orientation": "horizontal"})
-                    plot_handle.colorbar.set_label(da.units, size = 15, labelpad = -1.3)
-                    cbar_tick_labels = ppu.create_sparse_cbar_ticks(plot_levels) # Label every other tick on subplot colorbars
-                    cbar_tick_labels_rotation, cbar_tick_labels_fontsize = \
-                    ppu.set_cbar_labels_rotation_and_fontsize(self.region_plot_config, cbar_tick_labels, num_da, for_single_cbar = False)
-                    plot_handle.colorbar.ax.set_xticklabels(cbar_tick_labels, rotation = cbar_tick_labels_rotation) 
-                    plot_handle.colorbar.ax.tick_params(labelsize = cbar_tick_labels_fontsize)
-
-                # Plot a single, unfilled contour of data from truth_da for visual comparison
-                # to the filled contours plotted for the current da.
-                if ((type(truth_data_contour) is list) or \
-                    (type(truth_data_contour) is np.ndarray)) and \
-                   (data_name != self.truth_data_name):
-                    truth_da.loc[loc_str].plot.contour(ax = axis, levels = truth_data_contour,
-                                                       colors = "black",
-                                                       linewidths = 2.5,
-                                                       x = xy_coords.x, y = xy_coords.y,)
-
-                axis.set_title(subplot_title, fontsize = 16 + self.poster_font_increase)
-
-            formatted_short_name = pdp.format_short_name(truth_da)
-            if plot_errors:
-                formatted_short_name += "_errors"
-            formatted_short_short_name = self._format_short_short_name(truth_da)
-
-            # Create the plot title. If we're looping through individual Timestamp objects, they represent
-            # the period end time of the data. Indicate this explicitly in the title.
-            if (type(dtime) is pd.Timestamp):
-                title_string = f"{self.region} {formatted_short_name} ending at {dt_str}"
-            else:
-                title_string = f"{self.region} {formatted_short_name}: {dt_str}"
-            fig.suptitle(title_string, fontsize = 16 + self.poster_font_increase, fontweight = "bold")
-            fig.tight_layout()
-
-            # Save figure
-            if (dt_str in ppu.construct_monthly_string_list()):
-                time_period_number = ppu.month_string_to_month_number(dt_str)
-                dt_str = f"{time_period_number:02d}{dt_str}.{self.monthly_time_period_str}"
-            elif (dt_str in ppu.construct_seasonal_string_list()): 
-                time_period_number = ppu.season_string_to_season_number(dt_str)
-                dt_str = f"{time_period_number:02d}{dt_str}.{self.monthly_time_period_str}"
-
-            fig_name = f"cmap.{data_names_str}{formatted_short_name}.{dt_str}.{self.region}.png"
-            fig_path = os.path.join(self.plot_output_dir, fig_name)
-            print(f"Saving {fig_path}")
-            plt.savefig(fig_path)
-
     def how_to_plot_cmap_multi_panel(self):
         print('plot_cmap_multi_panel(data_dict,\n'
               '                      figsize = None,\n'
               '                      subplot_layout = None,\n'
               '                      plot_levels = None,\n'
-              '                      plot_color_map = None,\n'
+              '                      plot_cmap = None,\n'
               '                      default_color_map_version = 2,\n'
               '                      extend = "max",\n'
               '                      truth_data_contour = None,\n'
@@ -2437,7 +2267,7 @@ class PrecipVerificationProcessor(object):
                               figsize = None, 
                               subplot_layout = None, 
                               plot_levels = None,
-                              plot_color_map = None,
+                              plot_cmap = None,
                               default_color_map_version = 2,
                               extend = "max",
                               truth_data_contour = None,
@@ -2458,9 +2288,9 @@ class PrecipVerificationProcessor(object):
             subplot_layout = "grid"
  
         # Configure plot levels 
-        if (plot_levels is None) or (plot_color_map is None):
-            plot_color_map, plot_levels, color_list = ppu.create_precip_plot_levels(temporal_res = truth_da.interval_hours,
-                                                                                    version = default_color_map_version) 
+        if (plot_levels is None) or (plot_cmap is None):
+            plot_cmap, plot_levels, color_list = ppu.create_precip_plot_levels(temporal_res = truth_da.interval_hours,
+                                                                               version = default_color_map_version) 
 
         # Based on this particular dataset, get a list of all the valid datetimes we're going to plot 
         dtimes, time_dim, dt_format = self._create_datetime_list_from_da_time_dim(truth_da)
@@ -2503,7 +2333,7 @@ class PrecipVerificationProcessor(object):
                                                     x = xy_coords.x,
                                                     y = xy_coords.y, 
                                                     levels = plot_levels,
-                                                    cmap = plot_color_map,
+                                                    cmap = plot_cmap,
                                                     extend = extend, 
                                                     add_colorbar = False) 
     
@@ -2578,7 +2408,7 @@ class PrecipVerificationProcessor(object):
               '                             subplot_layout = None,\n'
               '                             plot_levels = None,\n'
               '                             error_levels = None,\n'
-              '                             plot_color_map = None,\n'
+              '                             plot_cmap = None,\n'
               '                             default_color_map_version = 2,\n'
               '                             extend = "max",\n'
               '                             cbar_tick_labels = None,\n'
@@ -2592,7 +2422,7 @@ class PrecipVerificationProcessor(object):
                                      subplot_layout = None, 
                                      plot_levels = None,
                                      error_levels = None,
-                                     plot_color_map = None,
+                                     plot_cmap = None,
                                      default_color_map_version = 2,
                                      extend = "max",
                                      cbar_tick_labels = None,
@@ -2612,9 +2442,9 @@ class PrecipVerificationProcessor(object):
             subplot_layout = "grid"
        
         # Configure plot levels 
-        if (plot_levels is None) or (plot_color_map is None):
-            plot_color_map, plot_levels, color_list = ppu.create_precip_plot_levels(temporal_res = truth_da.interval_hours,
-                                                                                    version = default_color_map_version) 
+        if (plot_levels is None) or (plot_cmap is None):
+            plot_cmap, plot_levels, color_list = ppu.create_precip_plot_levels(temporal_res = truth_da.interval_hours,
+                                                                               version = default_color_map_version) 
 
         if (error_levels is None):
             _, error_levels = self._calculate_levels_for_cmap(data_dict)
@@ -2655,14 +2485,14 @@ class PrecipVerificationProcessor(object):
                 if (data_name != self.truth_data_name):
                     data_to_plot = (da - truth_da).loc[loc_str]
                     final_plot_levels = error_levels
-                    final_plot_color_map = "seismic_r"
+                    final_plot_cmap = "seismic_r"
                     subplot_title = f"{data_name} errors"
                     cbar_extend = "both" # Need to extend colorbar in both directions for error cmaps
                     final_cbar_tick_labels = ppu.create_sparse_cbar_ticks(error_levels) # Label every other tick on subplot colorbars 
                 else:
                     data_to_plot = da.loc[loc_str]
                     final_plot_levels = plot_levels 
-                    final_plot_color_map = plot_color_map
+                    final_plot_cmap = plot_cmap
                     subplot_title = data_name
 
                     if (extend != "min") and (extend != "max") and (extend != "both"):
@@ -2684,7 +2514,7 @@ class PrecipVerificationProcessor(object):
                                                  x = xy_coords.x,
                                                  y = xy_coords.y, 
                                                  levels = final_plot_levels,
-                                                 cmap = final_plot_color_map,
+                                                 cmap = final_plot_cmap,
                                                  extend = cbar_extend, 
                                                  cbar_kwargs = {"orientation": "horizontal",
                                                                 "shrink": 0.6,
@@ -3096,9 +2926,8 @@ class PrecipVerificationProcessor(object):
             truth_da = self.truth_da
 
         if summed_over_time_period: 
-            self.sum_data_over_full_time_period()
-            self.truth_da_summed_time = self.da_dict_summed_time[self.truth_data_name]
-            data_dict = self.da_dict_summed_time
+            data_dict = self.get_summed_data()
+            self.truth_da_summed_time = data_dict[self.truth_data_name]
             truth_da = self.truth_da_summed_time
         
         for data_name, da in data_dict.items(): 
