@@ -2426,9 +2426,9 @@ class PrecipVerificationProcessor(object):
               '                             default_color_map_version = 2,\n'
               '                             extend = "max",\n'
               '                             cbar_tick_labels = None,\n'
-              '                             cbar_tick_labels_rotation = None\n'
+              '                             cbar_tick_labels_rotation = 60\n'
               '                             cbar_tick_labels_fontsize = None\n'
-              '                             sparse_cbar_ticks = False)')
+              '                             sparse_cbar_ticks = True)')
 
     def plot_cmap_multi_panel_errors(self,
                                      data_dict,
@@ -2440,9 +2440,9 @@ class PrecipVerificationProcessor(object):
                                      default_color_map_version = 2,
                                      extend = "max",
                                      cbar_tick_labels = None,
-                                     cbar_tick_labels_rotation = None,
+                                     cbar_tick_labels_rotation = 60,
                                      cbar_tick_labels_fontsize = None,
-                                     sparse_cbar_ticks = False):
+                                     sparse_cbar_ticks = True):
 
         # Configure basic info about the data
         num_da = len(data_dict.items())
