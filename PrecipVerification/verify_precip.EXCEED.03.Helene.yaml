@@ -34,8 +34,8 @@ regions_info:
   "US-Helene":
     region_extent: [-87, -75, 29.5, 40.0]
     figsize_sp: !!python/tuple [13, 12]
-    figsize: !!python/tuple [20, 7]
-    figsize_errors: !!python/tuple [20, 8]
+    figsize: !!python/tuple [15, 7]
+    figsize_errors: !!python/tuple [15, 7]
     subplot_layout: "grid"
     cm_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
     ts_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
