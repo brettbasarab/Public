@@ -7,7 +7,6 @@ end_dt_str: "20240928.00"
 temporal_res: 3
 truth_data_name: "AORC"
 data_names: ["AORC",
-             "CONUS404",
              "NestedReplay", 
 #             "CorrDiffMember00GEFS",
 #             "CorrDiffMember01GEFS",
@@ -16,7 +15,6 @@ data_names: ["AORC",
 #             "CorrDiffEnsembleMeanGEFS",
             ] 
 #data_names: ["AORC",
-#             "CONUS404",
 #             "NestedReplay", 
 #             "CorrDiffMember00ERA5",
 #             "CorrDiffMember01ERA5",
@@ -33,8 +31,8 @@ LAT_LON_2D: False
 # Names of regions for which to perform verification followed by their configuration info (lat/lon extents, etc.)
 # If nothing is provided for region info, info from precip_plotting_utilities.regions_info_dict will be used.
 regions_info:
-  "US-Arizona":
-    region_extent: [-117, -105, 31, 38]
+  "US-Helene":
+    region_extent: [-87, -75, 29.5, 40.0]
     figsize_sp: !!python/tuple [13, 12]
     figsize: !!python/tuple [20, 7]
     figsize_errors: !!python/tuple [20, 8]
