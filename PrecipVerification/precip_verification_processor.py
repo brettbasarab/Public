@@ -2271,6 +2271,7 @@ class PrecipVerificationProcessor(object):
               '                      default_color_map_version = 2,\n'
               '                      extend = "max",\n'
               '                      truth_data_contour = None,\n'
+              '                      include_colorbar = True,\n'
               '                      cbar_tick_labels = None,\n'
               '                      cbar_tick_labels_rotation = None\n'
               '                      cbar_tick_labels_fontsize = None\n'
@@ -2285,6 +2286,7 @@ class PrecipVerificationProcessor(object):
                               default_color_map_version = 2,
                               extend = "max",
                               truth_data_contour = None,
+                              include_colorbar = True,
                               cbar_tick_labels = None,
                               cbar_tick_labels_rotation = None,
                               cbar_tick_labels_fontsize = None,
@@ -2365,31 +2367,32 @@ class PrecipVerificationProcessor(object):
                 axis.set_title(data_name, fontsize = 15 + self.poster_font_increase)
           
             # Configure colorbar ticks and labels
-            if cbar_tick_labels is None:
-                if sparse_cbar_ticks:
-                    final_cbar_tick_labels = ppu.create_sparse_cbar_ticks(plot_levels) # Label every other tick on subplot colorbars
+            if include_colorbar:
+                if cbar_tick_labels is None:
+                    if sparse_cbar_ticks:
+                        final_cbar_tick_labels = ppu.create_sparse_cbar_ticks(plot_levels) # Label every other tick on subplot colorbars
+                    else:
+                        final_cbar_tick_labels = ppu.set_plot_levels_whole_numbers_to_integers(plot_levels)
                 else:
-                    final_cbar_tick_labels = ppu.set_plot_levels_whole_numbers_to_integers(plot_levels)
-            else:
-                final_cbar_tick_labels = ppu.set_plot_levels_whole_numbers_to_integers(cbar_tick_labels)
+                    final_cbar_tick_labels = ppu.set_plot_levels_whole_numbers_to_integers(cbar_tick_labels)
 
-            rotation, fontsize = ppu.set_cbar_labels_rotation_and_fontsize(self.region_plot_config, plot_levels, num_da, for_single_cbar = True)
-            if (cbar_tick_labels_rotation is None):
-                cbar_tick_labels_rotation = rotation
-            if (cbar_tick_labels_fontsize is None):
-                cbar_tick_labels_fontsize = fontsize 
+                rotation, fontsize = ppu.set_cbar_labels_rotation_and_fontsize(self.region_plot_config, plot_levels, num_da, for_single_cbar = True)
+                if (cbar_tick_labels_rotation is None):
+                    cbar_tick_labels_rotation = rotation
+                if (cbar_tick_labels_fontsize is None):
+                    cbar_tick_labels_fontsize = fontsize 
 
-            # Colorbars with extend = "max" are very annoyingly off-center, too far to the left.
-            # So, move them to the right a bit via axes positioning (items in list passed to 
-            # add_axes method are [left, bottom, width, height]
-            if (extend == "max"):
-                cbar_ax = fig.add_axes([0.275, 0.1, 0.5, 0.02])
-            else:
-                cbar_ax = fig.add_axes([0.25, 0.1, 0.5, 0.02])
-            cbar = fig.colorbar(contour_plot, cax = cbar_ax, orientation = "horizontal", ticks = plot_levels)
-            cbar.set_label(truth_da.units, size = 14 + self.poster_font_increase)
-            cbar.ax.set_xticklabels(final_cbar_tick_labels, rotation = cbar_tick_labels_rotation) 
-            cbar.ax.tick_params(labelsize = cbar_tick_labels_fontsize) 
+                # Colorbars with extend = "max" are very annoyingly off-center, too far to the left.
+                # So, move them to the right a bit via axes positioning (items in list passed to 
+                # add_axes method are [left, bottom, width, height]
+                if (extend == "max"):
+                    cbar_ax = fig.add_axes([0.275, 0.1, 0.5, 0.02])
+                else:
+                    cbar_ax = fig.add_axes([0.25, 0.1, 0.5, 0.02])
+                cbar = fig.colorbar(contour_plot, cax = cbar_ax, orientation = "horizontal", ticks = plot_levels)
+                cbar.set_label(truth_da.units, size = 14 + self.poster_font_increase)
+                cbar.ax.set_xticklabels(final_cbar_tick_labels, rotation = cbar_tick_labels_rotation) 
+                cbar.ax.tick_params(labelsize = cbar_tick_labels_fontsize) 
 
             # Adjust subplots position to make room for colorbar
             fig.subplots_adjust(bottom = 0.15)
