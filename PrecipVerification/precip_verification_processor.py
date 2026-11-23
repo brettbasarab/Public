@@ -2927,8 +2927,8 @@ class PrecipVerificationProcessor(object):
             elif (dt_str in ppu.construct_seasonal_string_list()): 
                 time_period_number = ppu.season_string_to_season_number(dt_str)
                 dt_str = f"{time_period_number:02d}{dt_str}.{self.monthly_time_period_str}"
-
-            fig_name = f"pdf.{data_names_str}{time_period_type}.{dt_str}.{self.region}.png"
+            
+            fig_name = f"pdf.{data_names_str}{time_period_type}.{pdp.format_short_name(self.truth_da)}.{dt_str}.{self.region}.png"
             fig_fpath = os.path.join(self.plot_output_dir, fig_name)
             print(f"Saving {fig_fpath}")
             plt.savefig(fig_fpath)
