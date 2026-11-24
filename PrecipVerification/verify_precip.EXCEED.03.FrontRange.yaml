@@ -8,7 +8,7 @@ temporal_res: 3
 truth_data_name: "AORC"
 data_names: ["AORC",
              "CONUS404",
-             "NestedReplay", 
+             "NestedReplay",
 #             "CorrDiffMember00ERA5",
 #             "CorrDiffMember01ERA5",
 #             "CorrDiffMember02ERA5",
@@ -27,8 +27,8 @@ regions_info:
   "US-ColoradoZoom":
     region_extent: [-109.5, -101.5, 36.5, 41.5]
     figsize_sp: !!python/tuple [14, 10] 
-    figsize: !!python/tuple [12, 9.5]
-    figsize_errors: !!python/tuple [12, 9.5]
+    figsize: !!python/tuple [12, 8]
+    figsize_errors: !!python/tuple [12, 9]
     subplot_layout: "grid"
     cm_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
     ts_mean_precip_range: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
